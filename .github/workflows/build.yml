@@ -30,20 +30,20 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - ubuntu-20.04
+          - ubuntu-22.04
           - windows-latest
 
         mm_version:
-          - "master"
+          - "1.12"
 
         include:
-          - mm_version: "master"
-            mm_branch: "master"
+          - mm_version: "1.12"
+            mm_branch: "1.12-dev"
 
           - os: ubuntu-latest
             os_short: linux
 
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             os_short: oldlinux
 
           - os: windows-latest
