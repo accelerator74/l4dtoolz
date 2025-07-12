@@ -13,7 +13,7 @@ IServerGameClients* gameclients = NULL;
 IVEngineServer* engine = NULL;
 IMatchFramework* g_pMatchFramework = NULL;
 ICvar* g_pCVar = NULL;
-IServer* g_pGameIServer = NULL;
+CBaseServer* g_pGameIServer = NULL;
 void* g_pGameRules = nullptr;
 int g_nGameSlots = -1;
 
@@ -22,7 +22,7 @@ SH_DECL_HOOK0(IMatchTitle, GetTotalNumPlayersSupported, SH_NOATTRIB, 0, int);
 SH_DECL_HOOK6(IServerGameDLL, LevelInit, SH_NOATTRIB, 0, bool, char const *, char const *, char const *, char const *, bool, bool);
 SH_DECL_HOOK0_void(IServerGameDLL, LevelShutdown, SH_NOATTRIB, 0);
 SH_DECL_MANUALHOOK0(CTerrorGameRules_GetMaxHumanPlayers, maxhuman_idx, 0, 0, int);
-SH_DECL_HOOK2_void(IServer, ReplyReservationRequest, 0, 0, netadr_s&, bf_read&);
+SH_DECL_HOOK2_void(CBaseServer, ReplyReservationRequest, SH_NOATTRIB, 0, netadr_s&, bf_read&);
 
 ConVar sv_maxplayers("sv_maxplayers", "-1", FCVAR_SPONLY|FCVAR_NOTIFY, "Max Human Players", true, -1, true, 32, l4dtoolz::OnChangeMaxplayers);
 ConVar sv_force_unreserved("sv_force_unreserved", "0", FCVAR_SPONLY|FCVAR_NOTIFY, "Disallow lobby reservation cookie", true, 0, true, 1, l4dtoolz::OnChangeUnreserved);
@@ -109,12 +109,12 @@ bool l4dtoolz::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, bool
 	if (!(handle=SH_GET_ORIG_VFNPTR_ENTRY(engine, &IVEngineServer::CreateFakeClient))) {
 		Warning("Failed to get address 'IVEngineServer::CreateFakeClient'\n");
 	} else {
-		g_pGameIServer = *reinterpret_cast<IServer **>(reinterpret_cast<unsigned char *>(handle)+sv_offs);
+		g_pGameIServer = *reinterpret_cast<CBaseServer **>(reinterpret_cast<unsigned char *>(handle)+sv_offs);
 #else
 	if (!(handle=dlopen(engine_dll, RTLD_LAZY))) {
 		Warning("Could't open library '%s'\n", engine_dll);
 	} else {
-		g_pGameIServer = (IServer *)g_MemUtils.ResolveSymbol(handle, "sv");
+		g_pGameIServer = (CBaseServer *)g_MemUtils.ResolveSymbol(handle, "sv");
 		dlclose(handle);
 #endif
 		int* m_nMaxClientsLimit = reinterpret_cast<int*>(reinterpret_cast<uintptr_t>(g_pGameIServer)+maxplayers_offs);
@@ -143,7 +143,7 @@ bool l4dtoolz::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, bool
 	SH_ADD_HOOK_MEMFUNC(IServerGameDLL, LevelShutdown, gamedll, this, &l4dtoolz::LevelShutdown, false);
 
 	if (g_pGameIServer) {
-		SH_ADD_HOOK(IServer, ReplyReservationRequest, g_pGameIServer, SH_STATIC(Hook_ReplyReservationRequest), false);
+		SH_ADD_HOOK(CBaseServer, ReplyReservationRequest, g_pGameIServer, SH_STATIC(Hook_ReplyReservationRequest), false);
 	} else {
 		Warning("g_pGameIServer pointer is not available\n");
 	}
@@ -161,7 +161,7 @@ bool l4dtoolz::Unload(char *error, size_t maxlen)
 	SH_REMOVE_HOOK_MEMFUNC(IServerGameDLL, LevelShutdown, gamedll, this, &l4dtoolz::LevelShutdown, false);
 
 	if (g_pGameIServer) {
-		SH_REMOVE_HOOK(IServer, ReplyReservationRequest, g_pGameIServer, SH_STATIC(Hook_ReplyReservationRequest), false);
+		SH_REMOVE_HOOK(CBaseServer, ReplyReservationRequest, g_pGameIServer, SH_STATIC(Hook_ReplyReservationRequest), false);
 	}
 
 	LevelShutdown();
