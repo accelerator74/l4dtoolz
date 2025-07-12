@@ -22,7 +22,7 @@ SH_DECL_HOOK0(IMatchTitle, GetTotalNumPlayersSupported, SH_NOATTRIB, 0, int);
 SH_DECL_HOOK6(IServerGameDLL, LevelInit, SH_NOATTRIB, 0, bool, char const *, char const *, char const *, char const *, bool, bool);
 SH_DECL_HOOK0_void(IServerGameDLL, LevelShutdown, SH_NOATTRIB, 0);
 SH_DECL_MANUALHOOK0(CTerrorGameRules_GetMaxHumanPlayers, maxhuman_idx, 0, 0, int);
-SH_DECL_HOOK2_void(CBaseServer, ReplyReservationRequest, SH_NOATTRIB, 0, netadr_s&, bf_read&);
+SH_DECL_HOOK2_void(CBaseServer, ReplyReservationRequest, SH_NOATTRIB, 0, netadr_t&, bf_read&);
 
 ConVar sv_maxplayers("sv_maxplayers", "-1", FCVAR_SPONLY|FCVAR_NOTIFY, "Max Human Players", true, -1, true, 32, l4dtoolz::OnChangeMaxplayers);
 ConVar sv_force_unreserved("sv_force_unreserved", "0", FCVAR_SPONLY|FCVAR_NOTIFY, "Disallow lobby reservation cookie", true, 0, true, 1, l4dtoolz::OnChangeUnreserved);
@@ -72,7 +72,7 @@ void Hook_ApplyGameSettings(KeyValues *pKV)
 	pKV->SetInt("members/numSlots", g_nGameSlots);
 }
 
-void Hook_ReplyReservationRequest(netadr_s& adr, bf_read& inmsg)
+void Hook_ReplyReservationRequest(netadr_t& adr, bf_read& inmsg)
 {
 	if (sv_force_unreserved.GetInt()) {
 		if (g_pGameIServer != NULL) {
@@ -242,7 +242,7 @@ const char *l4dtoolz::GetLicense()
 
 const char *l4dtoolz::GetVersion()
 {
-	return "2.0.2";
+	return "2.1.0";
 }
 
 const char *l4dtoolz::GetDate()
