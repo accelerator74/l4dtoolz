@@ -26,7 +26,6 @@ public:
 	static void OnChangeUnreserved ( IConVar *var, const char *pOldValue, float flOldValue );
 };
 
-size_t UTIL_Format(char *buffer, size_t maxlength, const char *fmt, ...);
 ServerClass *UTIL_FindServerClass(const char *classname);
 
 extern l4dtoolz g_l4dtoolz;

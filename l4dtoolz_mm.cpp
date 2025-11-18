@@ -27,7 +27,7 @@ SH_DECL_HOOK2_void(CBaseServer, ReplyReservationRequest, SH_NOATTRIB, 0, netadr_
 ConVar sv_maxplayers("sv_maxplayers", "-1", FCVAR_SPONLY|FCVAR_NOTIFY, "Max Human Players", true, -1, true, 32, l4dtoolz::OnChangeMaxplayers);
 ConVar sv_force_unreserved("sv_force_unreserved", "0", FCVAR_SPONLY|FCVAR_NOTIFY, "Disallow lobby reservation cookie", true, 0, true, 1, l4dtoolz::OnChangeUnreserved);
 
-void l4dtoolz::OnChangeMaxplayers ( IConVar *var, const char *pOldValue, float flOldValue )
+void l4dtoolz::OnChangeMaxplayers(IConVar *var, const char *pOldValue, float flOldValue)
 {
 	int new_value = ((ConVar*)var)->GetInt();
 	int old_value = atoi(pOldValue);
@@ -35,8 +35,8 @@ void l4dtoolz::OnChangeMaxplayers ( IConVar *var, const char *pOldValue, float f
 		Msg("g_pGameIServer pointer is not available\n");
 		return;
 	}
-	if(new_value != old_value) {
-		if(new_value >= 0) {
+	if (new_value != old_value) {
+		if (new_value >= 0) {
 			g_nGameSlots = new_value;
 			g_pGameIServer->m_numGameSlots = g_nGameSlots;
 		} else {
@@ -45,7 +45,7 @@ void l4dtoolz::OnChangeMaxplayers ( IConVar *var, const char *pOldValue, float f
 	}
 }
 
-void l4dtoolz::OnChangeUnreserved ( IConVar *var, const char *pOldValue, float flOldValue )
+void l4dtoolz::OnChangeUnreserved(IConVar *var, const char *pOldValue, float flOldValue)
 {
 	int new_value = ((ConVar*)var)->GetInt();
 	int old_value = atoi(pOldValue);
@@ -53,8 +53,8 @@ void l4dtoolz::OnChangeUnreserved ( IConVar *var, const char *pOldValue, float f
 		Msg("g_pGameIServer pointer is not available\n");
 		return;
 	}
-	if(new_value != old_value) {
-		if(new_value == 1) {
+	if (new_value != old_value) {
+		if (new_value == 1) {
 			g_pCVar->FindVar("sv_allow_lobby_connect_only")->SetValue(0);
 		}
 	}
@@ -117,23 +117,11 @@ bool l4dtoolz::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, bool
 		g_pGameIServer = (CBaseServer *)g_MemUtils.ResolveSymbol(handle, "sv");
 		dlclose(handle);
 #endif
-		int* m_nMaxClientsLimit = reinterpret_cast<int*>(reinterpret_cast<uintptr_t>(g_pGameIServer)+maxplayers_offs);
-		if (*m_nMaxClientsLimit != 18) {
-			Warning("Couldn't patch maxplayers\n");
-			if (!late) {
-				g_pGameIServer = NULL;
-			}
+		const char *pszCmdLineMax;
+		if (CommandLine()->CheckParm("-maxplayers", &pszCmdLineMax)) {
+			g_pGameIServer->m_nMaxclients = clamp(atoi(pszCmdLineMax), 1, 32);
 		} else {
-			*m_nMaxClientsLimit = 32;
-			const char *pszCmdLineMax;
-			if(CommandLine()->CheckParm("-maxplayers", &pszCmdLineMax) || CommandLine()->CheckParm("+maxplayers", &pszCmdLineMax)) {
-				char command[32];
-				UTIL_Format(command, sizeof(command), "maxplayers %d\n", clamp(atoi(pszCmdLineMax), 1, 32));
-				engine->ServerCommand(command);
-			} else {
-				engine->ServerCommand("maxplayers 31\n");
-			}
-			engine->ServerExecute();
+			g_pGameIServer->m_nMaxclients = 31;
 		}
 	}
 
@@ -203,23 +191,6 @@ void l4dtoolz::LevelShutdown()
 	}
 }
 
-size_t UTIL_Format(char *buffer, size_t maxlength, const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	size_t len = vsnprintf(buffer, maxlength, fmt, ap);
-	va_end(ap);
-
-	if (len >= maxlength)
-	{
-		len = maxlength - 1;
-		buffer[len] = '\0';
-	}
-
-	return len;
-}
-
 ServerClass *UTIL_FindServerClass(const char *classname)
 {
 	ServerClass *sc = gamedll->GetAllServerClasses();
@@ -242,7 +213,7 @@ const char *l4dtoolz::GetLicense()
 
 const char *l4dtoolz::GetVersion()
 {
-	return "2.1.0";
+	return "2.2.0";
 }
 
 const char *l4dtoolz::GetDate()
