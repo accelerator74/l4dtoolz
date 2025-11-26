@@ -134,13 +134,13 @@ jobs:
           ambuild
 
       - name: Uploading l4d package
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ github.event.repository.name }}-l4d-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
           path: src/build_l4d/package
 
       - name: Uploading l4d2 package
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ github.event.repository.name }}-l4d2-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
           path: src/build_l4d2/package
@@ -153,7 +153,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
 
       - name: Package
         run: |
