@@ -18,4 +18,4 @@ for sdk_name in Extension.sdks:
     
     binary = Extension.HL2Config(project, builder, cxx, 'l4dtoolz_mm', sdk)
 
-Extension.extensions = builder.Add(project)
+Extension.extensions += builder.Add(project)

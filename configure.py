@@ -29,7 +29,7 @@ parser.options.add_argument('--enable-debug', action='store_const', const='1', d
                        help='Enable debugging symbols')
 parser.options.add_argument('--enable-optimize', action='store_const', const='1', dest='opt',
                        help='Enable optimization')
-parser.options.add_argument('-s', '--sdks', default='present', dest='sdks',
+parser.options.add_argument('-s', '--sdks', default='l4d2', dest='sdks',
                        help='Build against specified SDKs; valid args are "none", "all", "present",'
                             ' or comma-delimited list of engine names')
 parser.options.add_argument('--targets', type=str, dest='targets', default=None,

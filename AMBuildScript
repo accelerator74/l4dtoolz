@@ -56,6 +56,7 @@ class ExtensionConfig(object):
     self.sdks = {}
     self.sdk_targets = []
     self.binaries = []
+    self.extensions = []
     self.generated_headers = None
     self.mms_root = None
     self.all_targets = []
@@ -111,9 +112,11 @@ class ExtensionConfig(object):
     if builder.options.mms_path:
       self.mms_root = builder.options.mms_path
     else:
-      self.mms_root = ResolveEnvPath('MMSOURCE110', 'mmsource-1.10')
+      self.mms_root = ResolveEnvPath('MMSOURCE112', 'mmsource-1.12')
       if not self.mms_root:
         self.mms_root = ResolveEnvPath('MMSOURCE', 'metamod-source')
+      if not self.mms_root:
+        self.mms_root = ResolveEnvPath('MMSOURCE_DEV', 'metamod-source')
       if not self.mms_root:
         self.mms_root = ResolveEnvPath('MMSOURCE_DEV', 'mmsource-central')
 
@@ -230,6 +233,9 @@ class ExtensionConfig(object):
             '-Wno-tautological-overlap-compare',
         ]
 
+    if cxx.version >= 'clang-21.0':
+        cxx.cflags += ['-Wno-uninitialized-const-pointer']
+
     if have_gcc:
       cxx.cflags += ['-mfpmath=sse']
       cxx.cflags += ['-Wno-maybe-uninitialized']
@@ -297,9 +303,9 @@ class ExtensionConfig(object):
 
   def configure_mac(self, cxx):
     cxx.defines += ['OSX', '_OSX', 'POSIX', 'KE_ABSOLUTELY_NO_STL']
-    cxx.cflags += ['-mmacosx-version-min=10.7']
+    cxx.cflags += ['-mmacosx-version-min=10.15']
     cxx.linkflags += [
-      '-mmacosx-version-min=10.7',
+      '-mmacosx-version-min=10.15',
       '-stdlib=libc++',
       '-lc++',
     ]
@@ -370,9 +376,6 @@ class ExtensionConfig(object):
       compiler.defines += ['SE_{}={}'.format(other_sdk['define'], other_sdk['code'])]
 
     SdkHelpers.configureCxx(context, binary, sdk)
-
-    if '-Wno-nontrivial-memcall' in compiler.cflags:
-        compiler.cflags.remove('-Wno-nontrivial-memcall')
 
     return binary
 
