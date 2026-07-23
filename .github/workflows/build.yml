@@ -64,32 +64,15 @@ jobs:
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
 
-      - name: Add msbuild to PATH (Windows)
-        if: startsWith(runner.os, 'Windows')
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Install (Windows)
-        if: startsWith(runner.os, 'Windows')
-        shell: cmd
-        run: |
-          :: See https://github.com/microsoft/vswhere/wiki/Find-VC
-          for /f "usebackq delims=*" %%i in (`vswhere -latest -property installationPath`) do (
-            call "%%i"\Common7\Tools\vsdevcmd.bat -arch=x86 -host_arch=x64
-          )
-          :: Loop over all environment variables and make them global.
-          for /f "delims== tokens=1,2" %%a in ('set') do (
-            echo>>"%GITHUB_ENV%" %%a=%%b
-          )
-
       - name: Checking out MM:Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: alliedmodders/metamod-source
           ref: ${{ matrix.mm_branch }}
           path: metamod-${{ matrix.mm_version }}
 
       - name: Setting up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -99,21 +82,27 @@ jobs:
           pip install git+https://github.com/accelerator74/ambuild
 
       - name: Checking out hl2sdk-l4d
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: alliedmodders/hl2sdk
           ref: l4d
           path: hl2sdk-l4d
 
       - name: Checking out hl2sdk-l4d2
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: alliedmodders/hl2sdk
           ref: l4d2
           path: hl2sdk-l4d2
 
+      - name: Checking out hl2sdk-manifests
+        uses: actions/checkout@v7
+        with:
+          repository: alliedmodders/hl2sdk-manifests
+          path: hl2sdk-manifests
+
       - name: Checking out own repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: src
 
@@ -122,7 +111,7 @@ jobs:
         run: |
           mkdir build_l4d
           cd build_l4d
-          python ../configure.py --enable-optimize --sdks="l4d" --mms-path="${{ github.workspace }}/metamod-${{ matrix.mm_version }}"
+          python ../configure.py --enable-optimize --sdks="l4d" --hl2sdk-manifest-path="${{ github.workspace }}/hl2sdk-manifests" --mms-path="${{ github.workspace }}/metamod-${{ matrix.mm_version }}"
           ambuild
 
       - name: Compiling ${{ github.event.repository.name }}-l4d2 files
@@ -130,17 +119,17 @@ jobs:
         run: |
           mkdir build_l4d2
           cd build_l4d2
-          python ../configure.py --enable-optimize --sdks="l4d2" --mms-path="${{ github.workspace }}/metamod-${{ matrix.mm_version }}"
+          python ../configure.py --enable-optimize --sdks="l4d2" --hl2sdk-manifest-path="${{ github.workspace }}/hl2sdk-manifests" --mms-path="${{ github.workspace }}/metamod-${{ matrix.mm_version }}"
           ambuild
 
       - name: Uploading l4d package
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ github.event.repository.name }}-l4d-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
           path: src/build_l4d/package
 
       - name: Uploading l4d2 package
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ github.event.repository.name }}-l4d2-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
           path: src/build_l4d2/package
@@ -153,7 +142,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
 
       - name: Package
         run: |

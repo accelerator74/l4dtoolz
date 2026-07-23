@@ -1,23 +1,21 @@
 # vim: set sts=2 ts=8 sw=2 tw=99 et ft=python:
-projectName = 'l4dtoolz'
+import os
 
-# smsdk_ext.cpp will be automatically added later
-sourceFiles = [
+project = builder.LibraryProject('l4dtoolz')
+project.sources += [
   'l4dtoolz_mm.cpp',
   'memutils.cpp',
 ]
-
-###############
-# Make sure to edit PackageScript, which copies your files to their appropriate locations
-# Simple extensions do not need to modify past this point.
-
-project = Extension.HL2Project(builder, projectName)
-
-project.sources += sourceFiles
   
 for sdk_name in Extension.sdks:
   sdk = Extension.sdks[sdk_name]
-  
-  binary = Extension.HL2Config(project, projectName + sdk.ext, sdk)
+  if sdk['name'] in ['mock']:
+    continue
+
+  for cxx in builder.targets:
+    if not cxx.target.arch in sdk['platforms'][cxx.target.platform]:
+      continue
+    
+    binary = Extension.HL2Config(project, builder, cxx, 'l4dtoolz_mm', sdk)
 
 Extension.extensions = builder.Add(project)
