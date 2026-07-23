@@ -367,7 +367,6 @@ class ExtensionConfig(object):
     SetArchFlags(compiler)
 
     compiler.cxxincludes += [
-      os.path.join(self.mms_root),
       os.path.join(self.mms_root, 'core'),
       os.path.join(self.mms_root, 'core', 'sourcehook'),
     ]
