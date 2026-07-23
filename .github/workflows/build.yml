@@ -79,7 +79,7 @@ jobs:
       - name: Setting up ambuild
         run: |
           python -m pip install wheel
-          pip install git+https://github.com/accelerator74/ambuild
+          pip install git+https://github.com/accelerator74/ambuild@nog3
 
       - name: Checking out hl2sdk-l4d
         uses: actions/checkout@v7
