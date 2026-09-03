@@ -136,14 +136,14 @@ class ExtensionConfig(object):
 
   def configure_cxx(self, cxx):
     if cxx.family == 'msvc':
-      if cxx.version < 1914 and builder.options.generator != 'vs':
-        raise Exception(f'Only MSVC 2017 15.7 and later are supported, full C++17 support is required. ({str(cxx.version)} < 1914)')
+      if cxx.version < 1928 and builder.options.generator != 'vs':
+        raise Exception(f'Only MSVC 2022 and later are supported, full C++20 support is required. ({str(cxx.version)} < 1928)')
     elif cxx.family == 'gcc':
-      if cxx.version < 'gcc-9':
-        raise Exception('Only GCC versions 9 or later are supported, full C++17 support is required.')
+      if cxx.version < 'gcc-11':
+        raise Exception('Only GCC versions 11 or later are supported, full C++20 support is required.')
     elif cxx.family == 'clang':
-      if cxx.version < 'clang-5':
-        raise Exception('Only clang versions 5 or later are supported, full C++17 support is required.')
+      if cxx.version < 'clang-14':
+        raise Exception('Only clang versions 14 or later are supported, full C++20 support is required.')
 
     if cxx.like('gcc'):
       self.configure_gcc(cxx)
@@ -197,7 +197,7 @@ class ExtensionConfig(object):
       '-Wno-overloaded-virtual',
       '-Wno-register',
       '-fvisibility-inlines-hidden',
-      '-std=c++17',
+      '-std=c++20',
     ]
 
     have_gcc = cxx.family == 'gcc'
@@ -236,6 +236,12 @@ class ExtensionConfig(object):
     if cxx.version >= 'clang-21.0':
         cxx.cflags += ['-Wno-uninitialized-const-pointer']
 
+    if cxx.version >= 'clang-16.0' or cxx.version >= 'apple-clang-15.0':
+        cxx.cxxflags += ['-Wno-deprecated-anon-enum-enum-conversion']
+
+    if cxx.version >= 'clang-12.0' or cxx.version >= 'apple-clang-13.0':
+        cxx.cxxflags += ['-Wno-deprecated-volatile']
+
     if have_gcc:
       cxx.cflags += ['-mfpmath=sse']
       cxx.cflags += ['-Wno-maybe-uninitialized']
@@ -265,7 +271,7 @@ class ExtensionConfig(object):
       '/EHsc',
       '/GR-',
       '/TP',
-      '/std:c++17',
+      '/std:c++20',
     ]
     cxx.linkflags += [
       'kernel32.lib',
