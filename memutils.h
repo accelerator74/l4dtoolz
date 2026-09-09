@@ -33,6 +33,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <cstddef>
 
 #include "khook/memory.hpp"
 #include "khook.hpp"

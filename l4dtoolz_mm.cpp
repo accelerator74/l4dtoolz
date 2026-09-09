@@ -227,7 +227,7 @@ const char *l4dtoolz::GetLicense()
 
 const char *l4dtoolz::GetVersion()
 {
-	return "2.2.0";
+	return "2.3.0";
 }
 
 const char *l4dtoolz::GetDate()

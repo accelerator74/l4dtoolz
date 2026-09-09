@@ -30,7 +30,6 @@
 
 #include "memutils.h"
 #include <string.h>
-#include <cstddef>
 
 #if defined LINUX
 #include <fcntl.h>
