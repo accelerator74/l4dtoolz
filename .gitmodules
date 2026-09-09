@@ -1,0 +1,3 @@
+[submodule "khook"]
+	path = khook
+	url = https://github.com/Kenzzer/KHook
