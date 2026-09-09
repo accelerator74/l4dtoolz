@@ -22,14 +22,6 @@ def ResolveEnvPath(env, folder):
 def Normalize(path):
   return os.path.abspath(os.path.normpath(path))
 
-def SetArchFlags(compiler):
-  if compiler.behavior == 'gcc':
-    if compiler.target.arch == 'x86_64':
-      compiler.cflags += ['-fPIC']
-  elif compiler.like('msvc'):
-    if compiler.target.arch == 'x86_64':
-      compiler.defines += ['WIN64']
-
 hl2sdk_manifests_path = None
 
 # First we check if the manifest exists in the current path
@@ -61,6 +53,8 @@ class ExtensionConfig(object):
     self.mms_root = None
     self.all_targets = []
     self.target_archs = set()
+    self.libsafetyhook = {}
+    self.libkhook = {}
 
     if builder.options.targets:
       target_archs = builder.options.targets.split(',')
@@ -112,7 +106,7 @@ class ExtensionConfig(object):
     if builder.options.mms_path:
       self.mms_root = builder.options.mms_path
     else:
-      self.mms_root = ResolveEnvPath('MMSOURCE112', 'mmsource-1.12')
+      self.mms_root = ResolveEnvPath('MMSOURCE20', 'mmsource-2.0')
       if not self.mms_root:
         self.mms_root = ResolveEnvPath('MMSOURCE', 'metamod-source')
       if not self.mms_root:
@@ -186,12 +180,12 @@ class ExtensionConfig(object):
       '-Wno-unknown-pragmas',
       '-Wno-dangling-else',
       '-fvisibility=hidden',
+      '-msse',
+      '-fPIC',
     ]
 
-    if cxx.target.arch in ['x86', 'x86_64']:
-      cxx.cflags += ['-msse']
-
     cxx.cxxflags += [
+      '-fno-rtti',
       '-fno-threadsafe-statics',
       '-Wno-non-virtual-dtor',
       '-Wno-overloaded-virtual',
@@ -306,6 +300,7 @@ class ExtensionConfig(object):
       cxx.linkflags += ['-static-libgcc']
     elif cxx.family == 'clang':
       cxx.linkflags += ['-lgcc_eh']
+    cxx.linkflags += ['-Wl,--exclude-libs,ALL']
 
   def configure_mac(self, cxx):
     cxx.defines += ['OSX', '_OSX', 'POSIX', 'KE_ABSOLUTELY_NO_STL']
@@ -343,38 +338,34 @@ class ExtensionConfig(object):
 
   def Library(self, context, compiler, name):
     compiler = compiler.clone()
-    SetArchFlags(compiler)
     return self.LibraryBuilder(compiler, name)
 
   def Program(self, context, compiler, name):
     compiler = compiler.clone()
-    SetArchFlags(compiler)
     return self.ProgramBuilder(compiler, name)
     
   def StaticLibrary(self, context, compiler, name):
     compiler = compiler.clone()
-    SetArchFlags(compiler)
     return self.StaticLibraryBuilder(compiler, name)
 
   def ConfigureForExtension(self, context, compiler):
     compiler.cxxincludes += [
       os.path.join(context.currentSourcePath),
+      os.path.join(self.sm_root, 'core', 'logic'),
     ]
     return compiler
 
   def ExtLibrary(self, context, compiler, name):
     binary = self.Library(context, compiler, name)
-    SetArchFlags(compiler)
     self.ConfigureForExtension(context, binary.compiler)
     return binary
 
   def ConfigureForHL2(self, context, binary, sdk):
     compiler = binary.compiler
-    SetArchFlags(compiler)
 
     compiler.cxxincludes += [
       os.path.join(self.mms_root, 'core'),
-      os.path.join(self.mms_root, 'core', 'sourcehook'),
+      os.path.join(context.currentSourcePath, 'khook', 'include'),
     ]
 
     for other_sdk in self.sdk_manifests:
@@ -417,4 +408,5 @@ if builder.backend == 'amb2':
         'PackageScript',
     ]
 
+builder.Build(['khook/AMBuilder', 'khook/third_party/safetyhook/AMBuilder'], { 'KHook': Extension, 'SafetyHook': Extension })
 builder.Build(BuildScripts, { 'Extension': Extension })

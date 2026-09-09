@@ -34,20 +34,19 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "sourcehook.h"
-#include "sh_memory.h"
+#include "khook/memory.hpp"
+#include "khook.hpp"
 
-#if SH_SYS == SH_SYS_LINUX || SH_SYS == SH_SYS_APPLE
-#include <sh_vector.h>
+#if defined LINUX || defined OSX
+#include <vector>
 #include "sm_symtable.h"
-using SourceHook::CVector;
 #endif
 
-#if SH_SYS == SH_SYS_APPLE
+#if defined OSX
 #include <CoreServices/CoreServices.h>
 #endif
 
-#if SH_SYS == SH_SYS_LINUX || SH_SYS == SH_SYS_APPLE
+#if defined LINUX || defined OSX
 struct LibSymbolTable
 {
 	SymbolTable table;
@@ -63,10 +62,10 @@ public:
 	~MemoryUtils();
 	void *ResolveSymbol(void *handle, const char *symbol);
 
-#if SH_SYS == SH_SYS_LINUX || SH_SYS == SH_SYS_APPLE
+#if defined LINUX || defined OSX
 private:
-	CVector<LibSymbolTable *> m_SymTables;
-#if SH_SYS == SH_SYS_APPLE
+	std::vector<LibSymbolTable *> m_SymTables;
+#if defined OSX
 	struct dyld_all_image_infos *m_ImageList;
 	SInt32 m_OSXMajor;
 	SInt32 m_OSXMinor;

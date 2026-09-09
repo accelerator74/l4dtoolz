@@ -30,8 +30,9 @@
 
 #include "memutils.h"
 #include <string.h>
+#include <cstddef>
 
-#if SH_SYS == SH_SYS_LINUX
+#if defined LINUX
 #include <fcntl.h>
 #include <link.h>
 #include <sys/mman.h>
@@ -40,10 +41,9 @@
 #define PAGE_SIZE			4096
 #define PAGE_ALIGN_UP(x)	((x + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
 #define ALIGN(ar) ((long)ar & ~(PAGE_SIZE-1))
-#define PAGE_EXECUTE_READWRITE  PROT_READ|PROT_WRITE|PROT_EXEC
 #endif
 
-#if SH_SYS == SH_SYS_APPLE
+#if defined OSX
 #include <AvailabilityMacros.h>
 #include <mach/task.h>
 #include <mach-o/dyld_images.h>
@@ -61,13 +61,13 @@ typedef struct task_dyld_info task_dyld_info_data_t;
 #define TASK_DYLD_INFO 17
 #define TASK_DYLD_INFO_COUNT (sizeof(task_dyld_info_data_t) / sizeof(natural_t))
 #endif // MAC_OS_X_VERSION_10_6
-#endif // SH_SYS_APPLE
+#endif // OSX
 
 MemoryUtils g_MemUtils;
 
 MemoryUtils::MemoryUtils()
 {
-#if SH_SYS == SH_SYS_APPLE
+#if defined OSX
 
 	Gestalt(gestaltSystemVersionMajor, &m_OSXMajor);
 	Gestalt(gestaltSystemVersionMinor, &m_OSXMinor);
@@ -94,7 +94,7 @@ MemoryUtils::MemoryUtils()
 
 MemoryUtils::~MemoryUtils()
 {
-#if SH_SYS == SH_SYS_LINUX || SH_SYS == SH_SYS_APPLE
+#if defined LINUX || defined OSX
 	for (size_t i = 0; i < m_SymTables.size(); i++)
 	{
 		delete m_SymTables[i];
@@ -105,11 +105,11 @@ MemoryUtils::~MemoryUtils()
 
 void *MemoryUtils::ResolveSymbol(void *handle, const char *symbol)
 {
-#if SH_SYS == SH_SYS_WIN32
+#if defined WIN32
 
 	return GetProcAddress((HMODULE)handle, symbol);
 	
-#elif SH_SYS == SH_SYS_LINUX
+#elif defined LINUX
 
 	struct link_map *dlmap;
 	struct stat dlstat;
@@ -243,7 +243,7 @@ void *MemoryUtils::ResolveSymbol(void *handle, const char *symbol)
 	munmap(file_hdr, dlstat.st_size);
 	return symbol_entry ? symbol_entry->address : NULL;
 
-#elif SH_SYS == SH_SYS_APPLE
+#elif defined OSX
 	
 	uintptr_t dlbase, linkedit_addr;
 	uint32_t image_count;

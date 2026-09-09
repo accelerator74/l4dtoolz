@@ -1,7 +1,7 @@
 #ifndef _INCLUDE_GAME_OFFSETS_
 #define _INCLUDE_GAME_OFFSETS_
 
-#if SH_SYS == SH_SYS_WIN32
+#if defined WIN32
 	#if SOURCE_ENGINE == SE_LEFT4DEAD
 		const int sv_offs = 6; // IServer pointer (in IVEngineServer::CreateFakeClient)
 		const int maxhuman_idx = 131; // CTerrorGameRules::GetMaxHumanPlayers vtable

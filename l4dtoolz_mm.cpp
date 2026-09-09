@@ -1,11 +1,9 @@
 #include "l4dtoolz_mm.h"
 #include "game_offsets.h"
-#include "baseserver.h"
 #include "memutils.h"
 #include "icommandline.h"
 #include "server_class.h"
-#include "sourcehook.h"
-#include "matchmaking/imatchframework.h"
+#include "khook.hpp"
 
 l4dtoolz g_l4dtoolz;
 IServerGameDLL* gamedll = NULL;
@@ -14,18 +12,23 @@ IVEngineServer* engine = NULL;
 IMatchFramework* g_pMatchFramework = NULL;
 ICvar* g_pCVar = NULL;
 CBaseServer* g_pGameIServer = NULL;
-void* g_pGameRules = nullptr;
+CGameRules* g_pGameRules = nullptr;
 int g_nGameSlots = -1;
-
-SH_DECL_HOOK1_void(IServerGameDLL, ApplyGameSettings, SH_NOATTRIB, 0, KeyValues*);
-SH_DECL_HOOK0(IMatchTitle, GetTotalNumPlayersSupported, SH_NOATTRIB, 0, int);
-SH_DECL_HOOK6(IServerGameDLL, LevelInit, SH_NOATTRIB, 0, bool, char const *, char const *, char const *, char const *, bool, bool);
-SH_DECL_HOOK0_void(IServerGameDLL, LevelShutdown, SH_NOATTRIB, 0);
-SH_DECL_MANUALHOOK0(CTerrorGameRules_GetMaxHumanPlayers, maxhuman_idx, 0, 0, int);
-SH_DECL_HOOK2_void(CBaseServer, ReplyReservationRequest, SH_NOATTRIB, 0, netadr_t&, bf_read&);
 
 ConVar sv_maxplayers("sv_maxplayers", "-1", FCVAR_SPONLY|FCVAR_NOTIFY, "Max Human Players", true, -1, true, 32, l4dtoolz::OnChangeMaxplayers);
 ConVar sv_force_unreserved("sv_force_unreserved", "0", FCVAR_SPONLY|FCVAR_NOTIFY, "Disallow lobby reservation cookie", true, 0, true, 1, l4dtoolz::OnChangeUnreserved);
+
+
+l4dtoolz::l4dtoolz() : 
+	m_ApplyGameSettings(&IServerGameDLL::ApplyGameSettings, this, nullptr, &l4dtoolz::ApplyGameSettings),
+	m_GetTotalNumPlayersSupported(&IMatchTitle::GetTotalNumPlayersSupported, this, &l4dtoolz::GetTotalNumPlayersSupported, nullptr),
+	m_LevelInit(&IServerGameDLL::LevelInit, this, nullptr, &l4dtoolz::LevelInit),
+	m_LevelShutdown(&IServerGameDLL::LevelShutdown, this, &l4dtoolz::LevelShutdown, nullptr),
+	m_ReplyReservationRequest(&CBaseServer::ReplyReservationRequest, this, &l4dtoolz::ReplyReservationRequest, nullptr)
+{
+	g_HookGetMaxHumanPlayers.Configure(maxhuman_idx);
+	g_HookGetMaxHumanPlayers.AddContext(this, &l4dtoolz::GetMaxHumanPlayers, nullptr);
+}
 
 void l4dtoolz::OnChangeMaxplayers(IConVar *var, const char *pOldValue, float flOldValue)
 {
@@ -60,36 +63,45 @@ void l4dtoolz::OnChangeUnreserved(IConVar *var, const char *pOldValue, float flO
 	}
 }
 
-void Hook_ApplyGameSettings(KeyValues *pKV)
+KHook::Return<void> l4dtoolz::ApplyGameSettings(IServerGameDLL*, KeyValues *pKV)
 {
 	if (!pKV) {
-		return;
+		return { KHook::Action::Ignore };
 	}
 	g_nGameSlots = sv_maxplayers.GetInt();
 	if (g_nGameSlots == -1) {
-		return;
+		return { KHook::Action::Ignore };
 	}
 	pKV->SetInt("members/numSlots", g_nGameSlots);
+	return { KHook::Action::Ignore };
 }
 
-void Hook_ReplyReservationRequest(netadr_t& adr, bf_read& inmsg)
+KHook::Return<void> l4dtoolz::ReplyReservationRequest(CBaseServer*, netadr_t& adr, bf_read& inmsg)
 {
 	if (sv_force_unreserved.GetInt()) {
 		if (g_pGameIServer != NULL) {
 			if (g_pGameIServer->m_nReservationCookie != 0)
-				RETURN_META(MRES_IGNORED);
+				return { KHook::Action::Ignore };
 		}
-		RETURN_META(MRES_SUPERCEDE);
+		return { KHook::Action::Supersede };
 	}
-	RETURN_META(MRES_IGNORED);
+	return { KHook::Action::Ignore };
 }
 
-int Hook_GetMaxHumanPlayers()
+KHook::Return<int> l4dtoolz::GetTotalNumPlayersSupported(IMatchTitle*)
 {
 	if (g_nGameSlots > 0) {
-		RETURN_META_VALUE(MRES_SUPERCEDE, g_nGameSlots);
+		return { KHook::Action::Supersede, g_nGameSlots };
 	}
-	RETURN_META_VALUE(MRES_IGNORED, g_nGameSlots);
+	return { KHook::Action::Ignore, g_nGameSlots };
+}
+
+KHook::Return<int> l4dtoolz::GetMaxHumanPlayers(CGameRules*)
+{
+	if (g_nGameSlots > 0) {
+		return { KHook::Action::Supersede, g_nGameSlots };
+	}
+	return { KHook::Action::Ignore, g_nGameSlots };
 }
 
 PLUGIN_EXPOSE(l4dtoolz, g_l4dtoolz);
@@ -105,8 +117,8 @@ bool l4dtoolz::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, bool
 	GET_V_IFACE_CURRENT(GetEngineFactory, g_pCVar, ICvar, CVAR_INTERFACE_VERSION);
 
 	void* handle = NULL;
-#if SH_SYS == SH_SYS_WIN32
-	if (!(handle=SH_GET_ORIG_VFNPTR_ENTRY(engine, &IVEngineServer::CreateFakeClient))) {
+#if defined WIN32
+	if (!(handle=KHook::FindOriginalVirtual(*(void***)engine, KHook::GetVtableIndex(&IVEngineServer::CreateFakeClient)))) {
 		Warning("Failed to get address 'IVEngineServer::CreateFakeClient'\n");
 	} else {
 		g_pGameIServer = *reinterpret_cast<CBaseServer **>(reinterpret_cast<unsigned char *>(handle)+sv_offs);
@@ -125,13 +137,13 @@ bool l4dtoolz::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, bool
 		}
 	}
 
-	SH_ADD_HOOK(IServerGameDLL, ApplyGameSettings, gamedll, SH_STATIC(Hook_ApplyGameSettings), true);
-	SH_ADD_HOOK(IMatchTitle, GetTotalNumPlayersSupported, g_pMatchFramework->GetMatchTitle(), SH_STATIC(Hook_GetMaxHumanPlayers), false);
-	SH_ADD_HOOK_MEMFUNC(IServerGameDLL, LevelInit, gamedll, this, &l4dtoolz::LevelInit, true);
-	SH_ADD_HOOK_MEMFUNC(IServerGameDLL, LevelShutdown, gamedll, this, &l4dtoolz::LevelShutdown, false);
+	m_ApplyGameSettings.Add(gamedll);
+	m_GetTotalNumPlayersSupported.Add(g_pMatchFramework->GetMatchTitle());
+	m_LevelInit.Add(gamedll);
+	m_LevelShutdown.Add(gamedll);
 
 	if (g_pGameIServer) {
-		SH_ADD_HOOK(CBaseServer, ReplyReservationRequest, g_pGameIServer, SH_STATIC(Hook_ReplyReservationRequest), false);
+		m_ReplyReservationRequest.Add(g_pGameIServer);
 	} else {
 		Warning("g_pGameIServer pointer is not available\n");
 	}
@@ -143,22 +155,22 @@ bool l4dtoolz::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, bool
 
 bool l4dtoolz::Unload(char *error, size_t maxlen)
 {
-	SH_REMOVE_HOOK(IServerGameDLL, ApplyGameSettings, gamedll, SH_STATIC(Hook_ApplyGameSettings), true);
-	SH_REMOVE_HOOK(IMatchTitle, GetTotalNumPlayersSupported, g_pMatchFramework->GetMatchTitle(), SH_STATIC(Hook_GetMaxHumanPlayers), false);
-	SH_REMOVE_HOOK_MEMFUNC(IServerGameDLL, LevelInit, gamedll, this, &l4dtoolz::LevelInit, true);
-	SH_REMOVE_HOOK_MEMFUNC(IServerGameDLL, LevelShutdown, gamedll, this, &l4dtoolz::LevelShutdown, false);
+	m_ApplyGameSettings.Remove(gamedll);
+	m_GetTotalNumPlayersSupported.Remove(g_pMatchFramework->GetMatchTitle());
+	m_LevelInit.Remove(gamedll);
+	m_LevelShutdown.Remove(gamedll);
 
 	if (g_pGameIServer) {
-		SH_REMOVE_HOOK(CBaseServer, ReplyReservationRequest, g_pGameIServer, SH_STATIC(Hook_ReplyReservationRequest), false);
+		m_ReplyReservationRequest.Remove(g_pGameIServer);
 	}
 
-	LevelShutdown();
+	LevelShutdown(gamedll);
 	ConVar_Unregister();
 
 	return true;
 }
 
-bool l4dtoolz::LevelInit(const char *pMapName, char const *pMapEntities, char const *pOldLevel, char const *pLandmarkName, bool loadGame, bool background)
+KHook::Return<bool> l4dtoolz::LevelInit(IServerGameDLL*, const char *pMapName, char const *pMapEntities, char const *pOldLevel, char const *pLandmarkName, bool loadGame, bool background)
 {
 	g_pGameRules = nullptr;
 
@@ -168,27 +180,29 @@ bool l4dtoolz::LevelInit(const char *pMapName, char const *pMapEntities, char co
 		iCount = pServerClass->m_pTable->GetNumProps();
 		for (i = 0; i < iCount; i++) {
 			if (stricmp(pServerClass->m_pTable->GetProp(i)->GetName(), "terror_gamerules_data") == 0) {
-				g_pGameRules = (*pServerClass->m_pTable->GetProp(i)->GetDataTableProxyFn())(NULL, NULL, NULL, NULL, 0);
+				g_pGameRules = reinterpret_cast<CGameRules*>((*pServerClass->m_pTable->GetProp(i)->GetDataTableProxyFn())(NULL, NULL, NULL, NULL, 0));
 				break;
 			}
 		}	
 	}
 
 	if (g_pGameRules) {
-		SH_ADD_MANUALHOOK(CTerrorGameRules_GetMaxHumanPlayers, g_pGameRules, SH_STATIC(Hook_GetMaxHumanPlayers), false);
+		g_HookGetMaxHumanPlayers.Add(g_pGameRules);
 	} else {
 		Warning("g_pGameRules pointer is not available\n");
 	}
 
-	return true;
+	return { KHook::Action::Ignore, true };
 }
 
-void l4dtoolz::LevelShutdown()
+KHook::Return<void> l4dtoolz::LevelShutdown(IServerGameDLL*)
 {
 	if (g_pGameRules) {
-		SH_REMOVE_MANUALHOOK(CTerrorGameRules_GetMaxHumanPlayers, g_pGameRules, SH_STATIC(Hook_GetMaxHumanPlayers), false);
+		g_HookGetMaxHumanPlayers.Remove(g_pGameRules);
 		g_pGameRules = nullptr;
 	}
+
+	return { KHook::Action::Ignore };
 }
 
 ServerClass *UTIL_FindServerClass(const char *classname)

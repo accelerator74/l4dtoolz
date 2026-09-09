@@ -6,7 +6,7 @@ project.sources += [
   'l4dtoolz_mm.cpp',
   'memutils.cpp',
 ]
-  
+
 for sdk_name in Extension.sdks:
   sdk = Extension.sdks[sdk_name]
   if sdk['name'] in ['mock']:
@@ -17,5 +17,14 @@ for sdk_name in Extension.sdks:
       continue
     
     binary = Extension.HL2Config(project, builder, cxx, 'l4dtoolz_mm', sdk)
+    binary.compiler.cxxincludes += [os.path.join(builder.sourcePath, 'khook', 'include')]
+
+    binary.compiler.defines += ['KHOOK_STANDALONE', 'KHOOK_EXPORT']
+    for task in Extension.libkhook:
+      if task.target.arch == binary.compiler.target.arch:
+       binary.compiler.linkflags += [task.binary]
+    for task in Extension.libsafetyhook:
+      if task.target.arch == binary.compiler.target.arch:
+        binary.compiler.linkflags += [task.binary]
 
 Extension.extensions += builder.Add(project)
