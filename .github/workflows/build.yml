@@ -25,12 +25,14 @@ jobs:
   build:
     name: build with mms${{ matrix.mm_version }} on ${{ matrix.os_short }}
     runs-on: ${{ matrix.os }}
+    env:
+      LLVM_VERSION: 22
     strategy:
       fail-fast: false
       matrix:
         os:
           - ubuntu-latest
-          - ubuntu-22.04
+          - ubuntu-24.04
           - windows-latest
 
         mm_version:
@@ -43,7 +45,7 @@ jobs:
           - os: ubuntu-latest
             os_short: linux
 
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             os_short: oldlinux
 
           - os: windows-latest
@@ -60,9 +62,10 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y clang g++-multilib
-          echo "CC=clang" >> $GITHUB_ENV
-          echo "CXX=clang++" >> $GITHUB_ENV
+          wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh ${{ env.LLVM_VERSION }} && rm llvm.sh
+          sudo apt-get install -y g++-multilib
+          echo "CC=clang-${{ env.LLVM_VERSION }}" >> $GITHUB_ENV
+          echo "CXX=clang++-${{ env.LLVM_VERSION }}" >> $GITHUB_ENV
 
       - name: Checking out MM:Source
         uses: actions/checkout@v7
